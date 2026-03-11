@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quote Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --surface2: #1e2335;
+    --border: #2a2f45;
+    --accent: #4f8ef7;
+    --accent2: #38d9a9;
+    --danger: #ff6b6b;
+    --warn: #ffd43b;
+    --text: #e8ecf4;
+    --muted: #6b7394;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  .app {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 20px 16px;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .header h1 { font-size: 16px; font-weight: 600; letter-spacing: -0.3px; }
+  .header p { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .deal-badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+
+  /* Grid layout */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .card-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .card-title span { color: var(--accent); font-size: 13px; }
+
+  /* Form fields */
+  .field { margin-bottom: 10px; }
+  .field label {
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 10px;
+    border-radius: 6px;
+    font-family: var(--sans);
+    font-size: 13px;
+    transition: border-color 0.15s;
+    outline: none;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--accent);
+  }
+  .field select option { background: var(--surface2); }
+  .field textarea { resize: vertical; min-height: 60px; }
+
+  /* Line items table */
+  .line-items { width: 100%; border-collapse: collapse; }
+  .line-items th {
+    text-align: left;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--muted);
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .line-items td { padding: 6px 4px; vertical-align: middle; }
+  .line-items tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
+
+  .line-items td input, .line-items td select {
+    background: var(--surface2);
+    border: 1px solid transparent;
+    color: var(--text);
+    padding: 5px 7px;
+    border-radius: 5px;
+    font-family: var(--sans);
+    font-size: 12px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .line-items td input:focus, .line-items td select:focus {
+    border-color: var(--accent);
+  }
+  .line-items td input[readonly] {
+    color: var(--muted);
+    cursor: default;
+  }
+
+  .col-product { width: 28%; }
+  .col-desc { width: 18%; }
+  .col-qty { width: 8%; }
+  .col-price { width: 12%; }
+  .col-disc { width: 12%; }
+  .col-disctype { width: 10%; }
+  .col-total { width: 10%; font-family: var(--mono); font-size: 12px; color: var(--accent2); padding: 5px 7px; }
+  .col-action { width: 4%; text-align: center; }
+
+  .btn-remove {
+    background: none;
+    border: none;
+    color: var(--danger);
+    cursor: pointer;
+    font-size: 16px;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+    padding: 2px 4px;
+  }
+  .btn-remove:hover { opacity: 1; }
+
+  .btn-add-item {
+    background: none;
+    border: 1px dashed var(--border);
+    color: var(--muted);
+    padding: 7px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: var(--sans);
+    font-size: 12px;
+    margin-top: 10px;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-add-item:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Shipping */
+  .shipping-options { display: flex; flex-direction: column; gap: 8px; }
+  .shipping-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .shipping-option:hover { border-color: var(--accent); }
+  .shipping-option.selected { border-color: var(--accent); background: rgba(79,142,247,0.08); }
+  .shipping-option input[type=radio] { accent-color: var(--accent); }
+  .shipping-option-info { flex: 1; }
+  .shipping-option-name { font-size: 13px; font-weight: 500; }
+  .shipping-option-detail { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .shipping-option-price { font-family: var(--mono); font-size: 13px; color: var(--accent2); }
+
+  .pickup-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .pickup-option:hover { border-color: var(--accent2); }
+  .pickup-option.selected { border-color: var(--accent2); background: rgba(56,217,169,0.08); }
+
+  .fetch-rates-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+  .fetch-rates-btn:hover { background: rgba(79,142,247,0.1); border-color: var(--accent); }
+  .fetch-rates-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* Totals */
+  .totals-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 13px;
+  }
+  .totals-row.subtotal { color: var(--muted); }
+  .totals-row.discount { color: var(--warn); }
+  .totals-row.shipping { color: var(--text); }
+  .totals-row.tax { color: var(--text); }
+  .totals-row.grand {
+    font-size: 18px;
+    font-weight: 600;
+    font-family: var(--mono);
+    padding-top: 12px;
+    margin-top: 8px;
+    border-top: 1px solid var(--border);
+    color: var(--accent2);
+  }
+  .totals-row span:last-child { font-family: var(--mono); }
+
+  /* Overall discount */
+  .overall-disc {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    margin: 8px 0;
+  }
+  .overall-disc label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .overall-disc input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 5px 8px;
+    border-radius: 5px;
+    font-family: var(--mono);
+    font-size: 12px;
+    width: 80px;
+    outline: none;
+  }
+  .overall-disc input:focus { border-color: var(--warn); }
+  .overall-disc select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 5px 8px;
+    border-radius: 5px;
+    font-family: var(--sans);
+    font-size: 12px;
+    outline: none;
+  }
+
+  /* Tax selector */
+  .tax-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .tax-badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    background: rgba(79,142,247,0.1);
+    color: var(--accent);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  /* Submit button */
+  .submit-btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--accent), #6fa8ff);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+    margin-top: 4px;
+  }
+  .submit-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(79,142,247,0.3); }
+  .submit-btn:active { transform: translateY(0); }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* Status messages */
+  .status {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    margin-bottom: 12px;
+    display: none;
+  }
+  .status.success { background: rgba(56,217,169,0.1); border: 1px solid rgba(56,217,169,0.3); color: var(--accent2); display: block; }
+  .status.error { background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.3); color: var(--danger); display: block; }
+  .status.info { background: rgba(79,142,247,0.1); border: 1px solid rgba(79,142,247,0.3); color: var(--accent); display: block; }
+
+  /* Loading spinner */
+  .spinner {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Notes field */
+  .notes-toggle {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: var(--sans);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: color 0.15s;
+  }
+  .notes-toggle:hover { color: var(--text); }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 4px 0 12px; }
+
+  .province-tax-note { font-size: 10px; color: var(--muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="header-left">
+      <div class="header-icon">📋</div>
+      <div>
+        <h1>Quote Generator</h1>
+        <p>Create and save a quote for this deal</p>
+      </div>
+    </div>
+    <div class="deal-badge" id="dealBadge">Loading deal...</div>
+  </div>
+
+  <div id="statusMsg" class="status"></div>
+
+  <!-- Customer & Quote Info -->
+  <div class="card">
+    <div class="card-title"><span>👤</span> Customer & Quote Info</div>
+    <div class="grid-2">
+      <div class="field">
+        <label>Quote Subject</label>
+        <input type="text" id="quoteSubject" placeholder="Quote: Deal Name">
+      </div>
+      <div class="field">
+        <label>Account</label>
+        <input type="text" id="accountName" placeholder="Account name" readonly>
+      </div>
+      <div class="field">
+        <label>Contact Name</label>
+        <input type="text" id="contactName" placeholder="Contact name">
+      </div>
+      <div class="field">
+        <label>Contact Email</label>
+        <input type="text" id="contactEmail" placeholder="Email">
+      </div>
+      <div class="field">
+        <label>Quote Date</label>
+        <input type="date" id="quoteDate">
+      </div>
+      <div class="field">
+        <label>Valid Until</label>
+        <input type="date" id="validUntil">
+      </div>
+    </div>
+  </div>
+
+  <!-- Shipping Address -->
+  <div class="card">
+    <div class="card-title"><span>📦</span> Shipping Address</div>
+    <div class="grid-2">
+      <div class="field" style="grid-column: span 2;">
+        <label>Street Address</label>
+        <input type="text" id="shipStreet" placeholder="123 Main St">
+      </div>
+      <div class="field">
+        <label>City</label>
+        <input type="text" id="shipCity" placeholder="City">
+      </div>
+      <div class="field">
+        <label>Province</label>
+        <select id="shipProvince" onchange="updateTaxRate()">
+          <option value="">Select Province</option>
+          <option value="AB">Alberta (AB) — GST 5%</option>
+          <option value="BC">British Columbia (BC) — GST+PST 12%</option>
+          <option value="MB">Manitoba (MB) — GST+PST 12%</option>
+          <option value="NB">New Brunswick (NB) — HST 15%</option>
+          <option value="NL">Newfoundland (NL) — HST 15%</option>
+          <option value="NS">Nova Scotia (NS) — HST 15%</option>
+          <option value="NT">Northwest Territories (NT) — GST 5%</option>
+          <option value="NU">Nunavut (NU) — GST 5%</option>
+          <option value="ON">Ontario (ON) — HST 13%</option>
+          <option value="PE">PEI (PE) — HST 15%</option>
+          <option value="QC">Quebec (QC) — GST+QST 14.975%</option>
+          <option value="SK">Saskatchewan (SK) — GST+PST 11%</option>
+          <option value="YT">Yukon (YT) — GST 5%</option>
+        </select>
+        <div class="province-tax-note" id="taxNote"></div>
+      </div>
+      <div class="field">
+        <label>Postal Code</label>
+        <input type="text" id="shipPostal" placeholder="A1A 1A1" oninput="this.value=this.value.toUpperCase()">
+      </div>
+      <div class="field">
+        <label>Country</label>
+        <input type="text" id="shipCountry" value="Canada" readonly>
+      </div>
+    </div>
+  </div>
+
+  <!-- Line Items -->
+  <div class="card">
+    <div class="card-title"><span>🛒</span> Line Items</div>
+    <div style="overflow-x: auto;">
+      <table class="line-items" id="lineItemsTable">
+        <thead>
+          <tr>
+            <th class="col-product">Product</th>
+            <th class="col-desc">Description</th>
+            <th class="col-qty">Qty</th>
+            <th class="col-price">Unit Price</th>
+            <th class="col-disc">Discount</th>
+            <th class="col-disctype">Type</th>
+            <th class="col-total">Total</th>
+            <th class="col-action"></th>
+          </tr>
+        </thead>
+        <tbody id="lineItemsBody">
+          <!-- Rows injected by JS -->
+        </tbody>
+      </table>
+    </div>
+    <button class="btn-add-item" onclick="addLineItem()">+ Add Line Item</button>
+  </div>
+
+  <!-- Shipping -->
+  <div class="card">
+    <div class="card-title"><span>🚚</span> Shipping Method</div>
+    <button class="fetch-rates-btn" id="fetchRatesBtn" onclick="fetchShippingRates()">
+      <span id="fetchBtnText">⚡ Get Live Rates</span>
+    </button>
+    <div id="shippingOptions" class="shipping-options">
+      <!-- Pickup always available -->
+      <div class="pickup-option" id="pickupOption" onclick="selectShipping('pickup', 0, 'Customer Pickup')">
+        <input type="radio" name="shipping" value="pickup">
+        <div class="shipping-option-info">
+          <div class="shipping-option-name">🏪 Customer Pickup</div>
+          <div class="shipping-option-detail">No shipping charge</div>
+        </div>
+        <div class="shipping-option-price">$0.00</div>
+      </div>
+    </div>
+    <div id="shippingNote" style="font-size:11px; color: var(--muted); margin-top: 8px; display:none;">
+      💡 Fill in the shipping address and line items, then click "Get Live Rates" to fetch carrier quotes.
+    </div>
+  </div>
+
+  <!-- Notes (collapsible) -->
+  <div class="card">
+    <div class="card-title"><span>📝</span> Notes & Terms</div>
+    <div class="field">
+      <label>Internal Notes</label>
+      <textarea id="internalNotes" placeholder="Notes visible to your team only..."></textarea>
+    </div>
+    <div class="field">
+      <label>Terms & Conditions</label>
+      <textarea id="termsConditions" placeholder="Payment terms, delivery notes, etc..."></textarea>
+    </div>
+  </div>
+
+  <!-- Totals -->
+  <div class="card">
+    <div class="card-title"><span>💰</span> Quote Summary</div>
+
+    <div class="totals-row subtotal">
+      <span>Subtotal</span>
+      <span id="subtotalDisplay">$0.00</span>
+    </div>
+
+    <div class="overall-disc">
+      <label>Overall Discount</label>
+      <input type="number" id="overallDiscount" value="0" min="0" oninput="recalculate()">
+      <select id="overallDiscType" onchange="recalculate()">
+        <option value="percent">%</option>
+        <option value="flat">$</option>
+      </select>
+    </div>
+
+    <div class="totals-row discount" id="discountRow" style="display:none;">
+      <span>Discount</span>
+      <span id="discountDisplay">-$0.00</span>
+    </div>
+
+    <div class="totals-row shipping">
+      <span>Shipping</span>
+      <span id="shippingDisplay">$0.00</span>
+    </div>
+
+    <div class="totals-row tax">
+      <span>
+        Tax
+        <span class="tax-badge" id="taxBadge">0%</span>
+      </span>
+      <span id="taxDisplay">$0.00</span>
+    </div>
+
+    <div class="totals-row grand">
+      <span>Total</span>
+      <span id="grandTotalDisplay">$0.00</span>
+    </div>
+  </div>
+
+  <button class="submit-btn" id="submitBtn" onclick="submitQuote()">
+    Save Quote to CRM
+  </button>
+
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+const state = {
+  dealId: null,
+  dealName: '',
+  accountId: null,
+  accountName: '',
+  contactName: '',
+  contactEmail: '',
+  lineItems: [],
+  selectedShipping: { method: 'pickup', cost: 0, label: 'Customer Pickup' },
+  taxRate: 0,
+  taxLabel: '0%',
+  overallDiscount: 0,
+  overallDiscType: 'percent',
+  zohoAuthToken: null,
+};
+
+// Canadian tax rates by province
+const CANADIAN_TAX = {
+  AB: { rate: 0.05,     label: 'GST 5%' },
+  BC: { rate: 0.12,     label: 'GST+PST 12%' },
+  MB: { rate: 0.12,     label: 'GST+PST 12%' },
+  NB: { rate: 0.15,     label: 'HST 15%' },
+  NL: { rate: 0.15,     label: 'HST 15%' },
+  NS: { rate: 0.15,     label: 'HST 15%' },
+  NT: { rate: 0.05,     label: 'GST 5%' },
+  NU: { rate: 0.05,     label: 'GST 5%' },
+  ON: { rate: 0.13,     label: 'HST 13%' },
+  PE: { rate: 0.15,     label: 'HST 15%' },
+  QC: { rate: 0.14975,  label: 'GST+QST 14.975%' },
+  SK: { rate: 0.11,     label: 'GST+PST 11%' },
+  YT: { rate: 0.05,     label: 'GST 5%' },
+};
+
+let itemCounter = 0;
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+window.onload = function() {
+  // Set default dates
+  const today = new Date();
+  const valid = new Date(today);
+  valid.setDate(valid.getDate() + 30);
+  document.getElementById('quoteDate').value = today.toISOString().split('T')[0];
+  document.getElementById('validUntil').value = valid.toISOString().split('T')[0];
+
+  document.getElementById('shippingNote').style.display = 'block';
+
+  // Try to load from Zoho CRM widget context
+  if (typeof ZOHO !== 'undefined') {
+    ZOHO.embeddedApp.on("PageLoad", function(data) {
+      state.dealId = data.EntityId;
+      loadDealData(state.dealId);
+    });
+    ZOHO.embeddedApp.init();
+  } else {
+    // Dev/preview mode — load mock data
+    loadMockData();
+  }
+};
+
+function loadMockData() {
+  state.dealId = 'MOCK-001';
+  state.dealName = 'Sample Deal';
+  state.accountId = 'ACC-001';
+  state.accountName = 'Acme Corp';
+  state.contactName = 'John Smith';
+  state.contactEmail = 'john@acmecorp.com';
+
+  document.getElementById('dealBadge').textContent = 'Deal: Sample Deal';
+  document.getElementById('quoteSubject').value = 'Quote: Sample Deal';
+  document.getElementById('accountName').value = 'Acme Corp';
+  document.getElementById('contactName').value = 'John Smith';
+  document.getElementById('contactEmail').value = 'john@acmecorp.com';
+  document.getElementById('shipStreet').value = '100 King St W';
+  document.getElementById('shipCity').value = 'Toronto';
+  document.getElementById('shipProvince').value = 'ON';
+  document.getElementById('shipPostal').value = 'M5X 1A9';
+
+  updateTaxRate();
+  addLineItem({ name: 'Sample Product', price: 199.99, qty: 2 });
+}
+
+async function loadDealData(dealId) {
+  try {
+    const deal = await ZOHO.CRM.API.getRecord({ Entity: 'Deals', RecordID: dealId });
+    const d = deal.data[0];
+
+    state.dealName = d.Deal_Name || '';
+    state.accountId = d.Account_Name ? d.Account_Name.id : null;
+    state.accountName = d.Account_Name ? d.Account_Name.name : '';
+
+    document.getElementById('dealBadge').textContent = 'Deal: ' + state.dealName;
+    document.getElementById('quoteSubject').value = 'Quote: ' + state.dealName;
+    document.getElementById('accountName').value = state.accountName;
+
+    // Parse delivery address from deal
+    const addr = d.Delivery_Address || '';
+    if (addr) {
+      const parts = addr.split(',').map(s => s.trim());
+      if (parts[0]) document.getElementById('shipStreet').value = parts[0];
+      if (parts[1]) document.getElementById('shipCity').value = parts[1];
+      if (parts[2]) {
+        const stateZip = parts[2].trim();
+        const prov = stateZip.split(' ')[0];
+        const postal = stateZip.replace(prov, '').trim();
+        document.getElementById('shipProvince').value = prov;
+        document.getElementById('shipPostal').value = postal;
+        updateTaxRate();
+      }
+    }
+
+    // Load contact info
+    if (d.Contact_Name) {
+      try {
+        const contact = await ZOHO.CRM.API.getRecord({ Entity: 'Contacts', RecordID: d.Contact_Name.id });
+        const c = contact.data[0];
+        state.contactName = (c.First_Name || '') + ' ' + (c.Last_Name || '');
+        state.contactEmail = c.Email || '';
+        document.getElementById('contactName').value = state.contactName.trim();
+        document.getElementById('contactEmail').value = state.contactEmail;
+      } catch(e) {}
+    }
+
+    // Load product from deal
+    if (d.Product) {
+      const prodId = d.Product.id;
+      try {
+        const prod = await ZOHO.CRM.API.getRecord({ Entity: 'Products', RecordID: prodId });
+        const p = prod.data[0];
+        addLineItem({
+          name: p.Product_Name,
+          price: p.Unit_Price || 0,
+          qty: d.Quantity || 1,
+          desc: p.Description || '',
+        });
+      } catch(e) {
+        addLineItem();
+      }
+    } else {
+      addLineItem();
+    }
+
+  } catch(err) {
+    showStatus('Could not load deal data: ' + err.message, 'error');
+    document.getElementById('dealBadge').textContent = 'Deal: Unknown';
+    addLineItem();
+  }
+}
+
+// ─── LINE ITEMS ───────────────────────────────────────────────────────────────
+function addLineItem(defaults = {}) {
+  const id = ++itemCounter;
+  const tbody = document.getElementById('lineItemsBody');
+  const tr = document.createElement('tr');
+  tr.id = 'row-' + id;
+  tr.innerHTML = `
+    <td class="col-product"><input type="text" value="${defaults.name || ''}" placeholder="Product name" oninput="recalculate()"></td>
+    <td class="col-desc"><input type="text" value="${defaults.desc || ''}" placeholder="Description"></td>
+    <td class="col-qty"><input type="number" value="${defaults.qty || 1}" min="1" oninput="recalcRow(${id})" style="text-align:center;"></td>
+    <td class="col-price"><input type="number" value="${defaults.price || 0}" min="0" step="0.01" oninput="recalcRow(${id})"></td>
+    <td class="col-disc"><input type="number" value="0" min="0" step="0.01" oninput="recalcRow(${id})"></td>
+    <td class="col-disctype">
+      <select onchange="recalcRow(${id})">
+        <option value="percent">%</option>
+        <option value="flat">$</option>
+      </select>
+    </td>
+    <td class="col-total" id="rowtotal-${id}">$0.00</td>
+    <td class="col-action"><button class="btn-remove" onclick="removeRow(${id})">×</button></td>
+  `;
+  tbody.appendChild(tr);
+  recalcRow(id);
+}
+
+function removeRow(id) {
+  const el = document.getElementById('row-' + id);
+  if (el) el.remove();
+  recalculate();
+}
+
+function recalcRow(id) {
+  const row = document.getElementById('row-' + id);
+  if (!row) return;
+  const inputs = row.querySelectorAll('input');
+  const qty = parseFloat(inputs[2].value) || 0;
+  const price = parseFloat(inputs[3].value) || 0;
+  const disc = parseFloat(inputs[4].value) || 0;
+  const discType = row.querySelector('select').value;
+
+  let lineTotal = qty * price;
+  if (discType === 'percent') lineTotal -= lineTotal * (disc / 100);
+  else lineTotal -= disc;
+  if (lineTotal < 0) lineTotal = 0;
+
+  document.getElementById('rowtotal-' + id).textContent = '$' + lineTotal.toFixed(2);
+  recalculate();
+}
+
+// ─── TOTALS ───────────────────────────────────────────────────────────────────
+function recalculate() {
+  // Sum line items
+  let subtotal = 0;
+  const totals = document.querySelectorAll('[id^="rowtotal-"]');
+  totals.forEach(el => {
+    subtotal += parseFloat(el.textContent.replace('$', '')) || 0;
+  });
+
+  // Overall discount
+  const discVal = parseFloat(document.getElementById('overallDiscount').value) || 0;
+  const discType = document.getElementById('overallDiscType').value;
+  let discAmount = 0;
+  if (discType === 'percent') discAmount = subtotal * (discVal / 100);
+  else discAmount = discVal;
+  if (discAmount > subtotal) discAmount = subtotal;
+
+  const afterDiscount = subtotal - discAmount;
+  const shippingCost = state.selectedShipping.cost || 0;
+  const taxable = afterDiscount + shippingCost;
+  const taxAmount = taxable * state.taxRate;
+  const grand = taxable + taxAmount;
+
+  document.getElementById('subtotalDisplay').textContent = '$' + subtotal.toFixed(2);
+  document.getElementById('shippingDisplay').textContent = '$' + shippingCost.toFixed(2);
+  document.getElementById('taxDisplay').textContent = '$' + taxAmount.toFixed(2);
+  document.getElementById('grandTotalDisplay').textContent = '$' + grand.toFixed(2);
+  document.getElementById('taxBadge').textContent = state.taxLabel;
+
+  if (discAmount > 0) {
+    document.getElementById('discountRow').style.display = 'flex';
+    document.getElementById('discountDisplay').textContent = '-$' + discAmount.toFixed(2);
+  } else {
+    document.getElementById('discountRow').style.display = 'none';
+  }
+}
+
+// ─── TAX ─────────────────────────────────────────────────────────────────────
+function updateTaxRate() {
+  const prov = document.getElementById('shipProvince').value;
+  if (prov && CANADIAN_TAX[prov]) {
+    state.taxRate = CANADIAN_TAX[prov].rate;
+    state.taxLabel = CANADIAN_TAX[prov].label;
+    document.getElementById('taxNote').textContent = '✓ ' + CANADIAN_TAX[prov].label + ' applied';
+  } else {
+    state.taxRate = 0;
+    state.taxLabel = '0%';
+    document.getElementById('taxNote').textContent = '';
+  }
+  recalculate();
+}
+
+// ─── SHIPPING ────────────────────────────────────────────────────────────────
+function selectShipping(method, cost, label) {
+  state.selectedShipping = { method, cost, label };
+
+  // Update UI
+  document.querySelectorAll('.shipping-option, .pickup-option').forEach(el => {
+    el.classList.remove('selected');
+    const radio = el.querySelector('input[type=radio]');
+    if (radio) radio.checked = false;
+  });
+
+  if (method === 'pickup') {
+    const el = document.getElementById('pickupOption');
+    el.classList.add('selected');
+    el.querySelector('input').checked = true;
+  } else {
+    const el = document.getElementById('ship-' + method);
+    if (el) {
+      el.classList.add('selected');
+      el.querySelector('input').checked = true;
+    }
+  }
+  recalculate();
+}
+
+async function fetchShippingRates() {
+  const postal = document.getElementById('shipPostal').value.trim();
+  const street = document.getElementById('shipStreet').value.trim();
+  const city = document.getElementById('shipCity').value.trim();
+  const prov = document.getElementById('shipProvince').value;
+
+  if (!postal || !prov) {
+    showStatus('Please fill in the shipping address (province + postal code) before fetching rates.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('fetchRatesBtn');
+  const btnText = document.getElementById('fetchBtnText');
+  btn.disabled = true;
+  btnText.innerHTML = '<span class="spinner"></span> Fetching rates...';
+
+  // Calculate total weight from line items (placeholder — adjust per your products)
+  // In production, you'd pull weight from product records
+  const totalWeight = 2.0; // kg default
+
+  // ─── REPLACE THESE WITH YOUR ACTUAL API CREDENTIALS ───────────────────────
+  // FedEx: https://developer.fedex.com
+  // UPS: https://developer.ups.com
+  // Canada Post: https://www.canadapost-postescanada.ca/ac/signup
+  // DHL: https://developer.dhl.com
+  // ──────────────────────────────────────────────────────────────────────────
+
+  // NOTE: In production, these API calls should go through a backend proxy
+  // (Zoho Deluge function or server) to keep credentials secure.
+  // For now, we simulate with realistic Canadian rates.
+
+  const mockRates = await simulateCarrierRates(postal, prov, totalWeight);
+
+  // Render rate options
+  const container = document.getElementById('shippingOptions');
+
+  // Clear previous carrier options (keep pickup)
+  container.querySelectorAll('.shipping-option').forEach(el => el.remove());
+
+  mockRates.forEach((rate, i) => {
+    const div = document.createElement('div');
+    div.className = 'shipping-option';
+    div.id = 'ship-' + i;
+    div.onclick = () => selectShipping(i, rate.cost, rate.label);
+    div.innerHTML = `
+      <input type="radio" name="shipping" value="${i}">
+      <div class="shipping-option-info">
+        <div class="shipping-option-name">${rate.carrier} — ${rate.service}</div>
+        <div class="shipping-option-detail">Est. ${rate.days} business day${rate.days > 1 ? 's' : ''}</div>
+      </div>
+      <div class="shipping-option-price">$${rate.cost.toFixed(2)}</div>
+    `;
+    container.appendChild(div);
+  });
+
+  // Auto-select cheapest
+  if (mockRates.length > 0) {
+    selectShipping(0, mockRates[0].cost, mockRates[0].label);
+    showStatus('✓ Rates fetched. Cheapest option selected automatically.', 'success');
+  }
+
+  btn.disabled = false;
+  btnText.innerHTML = '⚡ Refresh Rates';
+  document.getElementById('shippingNote').style.display = 'none';
+}
+
+// Simulates realistic Canadian carrier rates
+// REPLACE this function body with real API calls in production
+async function simulateCarrierRates(postal, province, weightKg) {
+  await new Promise(r => setTimeout(r, 1200)); // simulate network delay
+
+  const base = weightKg * 3.5;
+  const rates = [
+    { carrier: 'Canada Post', service: 'Regular Parcel',       cost: base + 8.99,  days: 5, label: 'Canada Post Regular' },
+    { carrier: 'Canada Post', service: 'Expedited Parcel',     cost: base + 13.50, days: 3, label: 'Canada Post Expedited' },
+    { carrier: 'Canada Post', service: 'Xpresspost',           cost: base + 22.00, days: 2, label: 'Canada Post Xpresspost' },
+    { carrier: 'UPS',         service: 'Standard',             cost: base + 11.25, days: 4, label: 'UPS Standard' },
+    { carrier: 'UPS',         service: 'Expedited',            cost: base + 19.99, days: 2, label: 'UPS Expedited' },
+    { carrier: 'FedEx',       service: 'Ground',               cost: base + 10.75, days: 4, label: 'FedEx Ground' },
+    { carrier: 'FedEx',       service: 'Express Saver',        cost: base + 24.50, days: 2, label: 'FedEx Express Saver' },
+    { carrier: 'DHL',         service: 'Express',              cost: base + 28.00, days: 1, label: 'DHL Express' },
+  ];
+
+  // Sort by cost (cheapest first)
+  return rates.sort((a, b) => a.cost - b.cost);
+}
+
+// ─── SUBMIT ───────────────────────────────────────────────────────────────────
+async function submitQuote() {
+  const subject = document.getElementById('quoteSubject').value.trim();
+  if (!subject) { showStatus('Please enter a quote subject.', 'error'); return; }
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    // Build line items for CRM
+    const rows = document.querySelectorAll('#lineItemsBody tr');
+    const productDetails = [];
+    rows.forEach(row => {
+      const inputs = row.querySelectorAll('input');
+      const name = inputs[0].value.trim();
+      if (!name) return;
+      const qty = parseFloat(inputs[2].value) || 1;
+      const price = parseFloat(inputs[3].value) || 0;
+      const disc = parseFloat(inputs[4].value) || 0;
+      const discType = row.querySelector('select').value;
+      productDetails.push({
+        product: { name },
+        quantity: qty,
+        unit_price: price,
+        discount: disc,
+        discount_type: discType === 'percent' ? '%' : 'absolute',
+        description: inputs[1].value.trim(),
+      });
+    });
+
+    // Get totals
+    const subtotal = parseFloat(document.getElementById('subtotalDisplay').textContent.replace('$','')) || 0;
+    const grandTotal = parseFloat(document.getElementById('grandTotalDisplay').textContent.replace('$','')) || 0;
+    const shippingCost = state.selectedShipping.cost || 0;
+    const discVal = parseFloat(document.getElementById('overallDiscount').value) || 0;
+    const discType = document.getElementById('overallDiscType').value;
+
+    const quoteMap = {
+      Subject: subject,
+      Quote_Date: document.getElementById('quoteDate').value,
+      Valid_Till: document.getElementById('validUntil').value,
+      Shipping_Street: document.getElementById('shipStreet').value,
+      Shipping_City: document.getElementById('shipCity').value,
+      Shipping_State: document.getElementById('shipProvince').value,
+      Shipping_Code: document.getElementById('shipPostal').value,
+      Shipping_Country: 'Canada',
+      Shipping_Charge: shippingCost,
+      Discount: discVal,
+      Adjustment: 0,
+      Grand_Total: grandTotal,
+      Terms_and_Conditions: document.getElementById('termsConditions').value,
+      Description: document.getElementById('internalNotes').value,
+      Product_Details: productDetails,
+    };
+
+    if (state.dealId) quoteMap.Deal_Name = { id: state.dealId };
+    if (state.accountId) quoteMap.Account_Name = { id: state.accountId };
+
+    if (typeof ZOHO !== 'undefined') {
+      const resp = await ZOHO.CRM.API.insertRecord({ Entity: 'Quotes', APIData: quoteMap });
+      if (resp.data && resp.data[0] && resp.data[0].code === 'SUCCESS') {
+        showStatus('✅ Quote saved successfully!', 'success');
+      } else {
+        throw new Error(JSON.stringify(resp));
+      }
+    } else {
+      // Preview mode
+      console.log('Quote payload:', quoteMap);
+      showStatus('✅ [Preview Mode] Quote would be saved. Check console for payload.', 'success');
+    }
+
+  } catch(err) {
+    showStatus('Failed to save quote: ' + err.message, 'error');
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Save Quote to CRM';
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function showStatus(msg, type) {
+  const el = document.getElementById('statusMsg');
+  el.className = 'status ' + type;
+  el.textContent = msg;
+  el.style.display = 'block';
+  if (type === 'success') setTimeout(() => { el.style.display = 'none'; }, 5000);
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+</script>
+</body>
+</html>
