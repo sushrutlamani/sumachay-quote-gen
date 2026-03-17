@@ -1,53 +1,24 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <script src="https://live.zwidgets.com/js-sdk/1.1/ZohoEmbedSDK.min.js"></script>
-    <style>
-      body { font-family: sans-serif; padding: 10px; color: #333; }
-      .field { margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
-      .label { font-weight: bold; font-size: 0.8rem; color: #777; }
-      .value { font-size: 1rem; }
-    </style>
-  </head>
-  <body>
-    <div id="display-container">Loading Deal data...</div>
-
-    <script>
-      ZOHO.embeddedApp.on("PageLoad", function(data) {
-        // 'data' contains the Entity ID and Module name
-        if(data && data.Entity) {
-          fetchDealData(data.Entity, data.EntityId);
-        }
-      });
-
-      function fetchDealData(module, id) {
-        ZOHO.CRM.API.getRecord({ Entity: module, RecordID: id })
-          .then(function(response) {
+ZOHO.embeddedApp.on("PageLoad", function(data) {
+    // 1. Use getRecord (singular) instead of getAllRecords
+    ZOHO.CRM.API.getRecord({ Entity: "Deals", RecordID: data.EntityId })
+        .then(function(response) {
             const deal = response.data[0];
-            const container = document.getElementById("display-container");
             
-            // Define the fields you want to pull
-            const fieldsToShow = {
-              "Deal Name": deal.Deal_Name,
-              "Amount": deal.Amount,
-              "Stage": deal.Stage,
-              "Closing Date": deal.Closing_Date,
-              "Account": deal.Account_Name ? deal.Account_Name.name : "N/A"
-            };
+            // 2. Build your table with Deal fields
+            let html = `<table>
+                <tr><th>Field</th><th>Value</th></tr>
+                <tr><td>Name</td><td>${deal.Deal_Name}</td></tr>
+                <tr><td>Amount</td><td>${deal.Amount || '0'}</td></tr>
+                <tr><td>Stage</td><td>${deal.Stage}</td></tr>
+            </table>`;
+            
+            document.getElementById("leadData").innerHTML = html;
+        })
+        .catch(error => {
+            console.error(error);
+            document.getElementById("leadData").innerHTML = "Error fetching Deal.";
+        });
+});
 
-            let html = "";
-            for (const [label, value] of Object.entries(fieldsToShow)) {
-              html += `<div class="field">
-                        <div class="label">${label}</div>
-                        <div class="value">${value || 'None'}</div>
-                      </div>`;
-            }
-            container.innerHTML = html;
-          });
-      }
-
-      ZOHO.embeddedApp.init();
-    </script>
-  </body>
-</html>
+// 3. MANDATORY: This starts the engine
+ZOHO.embeddedApp.init();
